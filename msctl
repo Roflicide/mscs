@@ -704,6 +704,17 @@ getEULAValue() {
 }
 
 # ---------------------------------------------------------------------------
+# Set the value of the EULA boolean to true.
+#
+# @param 1 The world server of interest.
+# ---------------------------------------------------------------------------
+setTrueEULAValue() {
+  local EULA_FILE
+  EULA_FILE=$WORLDS_LOCATION/$1/eula.txt
+  setValue "$EULA_FILE" "eula" "true" | $PERL -ne 'print lc'
+}
+
+# ---------------------------------------------------------------------------
 # Get the value of a key in a mscs.properties file.
 #
 # @param 1 The world server of interest.
@@ -1309,18 +1320,63 @@ serverConsole() {
 }
 
 # ---------------------------------------------------------------------------
+# Check if the EULA.txt has been accepted for the world server.
+# If it hasn't, provide the user an option for the script to 
+# set it for them.
+#
+# @param 1 The world server to check the EULA for.
+# @return TRUE (0) if EULA accepted, FALSE (1) otherwise.
+# ---------------------------------------------------------------------------
+checkEULAAcceptance() {
+  local WORLD_DIR EULA_FILE EULA_VALUE
+  WORLD_DIR="$WORLDS_LOCATION/$1"
+  EULA_FILE="$WORLD_DIR/eula.txt"
+  EULA_VALUE=$(getEULAValue "$1")
+
+  # If the EULA doesn't exist, create it.
+  if [ ! -f "$EULA_FILE" ]; then
+    touch "$EULA_FILE"
+    echo "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula)." >> "$EULA_FILE"
+    echo "$(date -d @$(date +%s))" >> "$EULA_FILE"
+    echo "eula=false" >> "$EULA_FILE"
+  fi
+  if ! true_value "$EULA_VALUE"; then
+    printf "Please accept the Minecraft EULA before continuing: \n\n"
+    cat "$EULA_FILE"
+    printf "\nType TRUE to accept the EULA for world %s and continue with world startup: " "$1"
+    read answer
+    if [ "$answer" = "TRUE" ] || [ "$answer" = "true" ]; then
+        # EULA accepted--return TRUE (0) value.
+        setTrueEULAValue "$1"
+        return 0
+    else
+      # EULA not accepted--return FALSE (1) value.
+      return 1
+    fi
+  fi 
+  # EULA accepted--return TRUE (0) value.
+  return 0 
+}
+
+
+# ---------------------------------------------------------------------------
 # Start the world server.  Generate the appropriate environment for the
 # server if it doesn't already exist.
 #
 # @param 1 The world server to start.
 # ---------------------------------------------------------------------------
 start() {
-  local EULA PID SERVER_COMMAND WORLD_DIR
+  local WORLD_DIR SERVER_COMMAND EULA_PATH
   WORLD_DIR="$WORLDS_LOCATION/$1"
   # Make sure that the server software exists.
   updateServerSoftware "$1"
   # Make sure that the world's directory exists.
   mkdir -p "$WORLD_DIR"
+  # Check if the EULA has been accepted.
+  if ! checkEULAAcceptance "$1"; then
+    printf "The EULA has not been accepted. Startup aborted.\n"
+    exit 1
+  fi
   # If the original level exists but the actual level doesn't,
   # we probably restored a backup.
   if [ -d "$WORLD_DIR/$1-original" ] && [ ! -e "$WORLD_DIR/$1" ] && [ ! -L "$WORLD_DIR/$1" ]; then
@@ -1330,12 +1386,6 @@ start() {
   # Make sure that the level directory exists.
   if [ ! -e "$WORLD_DIR/$1" ] && [ ! -L "$WORLD_DIR/$1" ]; then
     mkdir -p "$WORLD_DIR/$1"
-  fi
-  # Make sure the EULA has been set to true.
-  EULA=$(getEULAValue "$1")
-  if ! true_value "$EULA"; then
-    printf "\nWarning, the EULA has not been accepted for world %s.\n" "$1"
-    printf "To accept the EULA, modify %s/eula.txt file.\n" "$WORLD_DIR"
   fi
   # Rotate the world's log files.
   rotateLog "$1"
@@ -1411,6 +1461,8 @@ start() {
   fi
   # Create a PID file for the world server.
   echo $PID >"$WORLDS_LOCATION/$1.pid"
+  printf "Successfully started Minecraft Server: $1.\n"
+  printf "Please allow 1-2 minutes for the world to start up.\n"
 }
 
 # ---------------------------------------------------------------------------
@@ -1438,6 +1490,7 @@ stop() {
   fi
   # Remove the PID file for the world server.
   rm -f "$WORLDS_LOCATION/$1.pid"
+  printf "Successfully stopped Minecraft Server: "$WORLD".\n"
 }
 
 # ---------------------------------------------------------------------------
@@ -2507,14 +2560,12 @@ case "$COMMAND" in
       done
     fi
     # Start each world requested, if not already running.
-    printf "Starting Minecraft Server:"
     for WORLD in $WORLDS; do
       if ! serverRunning $WORLD; then
-        printf " $WORLD"
+        printf "Starting Minecraft Server: "$WORLD"...\n"
         start $WORLD
       fi
     done
-    printf ".\n"
     ;;
   stop | force-stop)
     # Figure out which worlds to stop.
@@ -2545,11 +2596,10 @@ case "$COMMAND" in
       printf "Unable to stop worlds: no running worlds found.\n"
       exit 1
     fi
-    printf "Stopping Minecraft Server:"
     for WORLD in $WORLDS; do
       # Try to stop the world cleanly.
+      printf "Stopping Minecraft Server: "$WORLD"...\n"
       if serverRunning $WORLD; then
-        printf " $WORLD"
         if [ $(queryNumUsers $WORLD) -gt 0 ]; then
           sendCommand $WORLD "say The server admin has initiated a server shut down."
           sendCommand $WORLD "say The server will shut down in 1 minute..."
@@ -2564,11 +2614,9 @@ case "$COMMAND" in
           stop $WORLD
         fi
       elif [ "$COMMAND" = "force-stop" ]; then
-        printf " $WORLD"
         forceStop $WORLD
       fi
     done
-    printf ".\n"
     ;;
   restart | reload | force-restart | force-reload)
     # Grab the latest version information.
