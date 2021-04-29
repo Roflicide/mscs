@@ -12,7 +12,6 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-
 # A workflow is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "run-shellcheck"
@@ -24,9 +23,9 @@ jobs:
     steps:
     # Checks-out the MSCS repository under $GITHUB_WORKSPACE, so jobs can access the code
     # This is a GitHub-created action
-    - name: Checkout code
+    - name: Checkout MSCS code
     - uses: actions/checkout@v2
     # Runs the ShellCheck action (https://github.com/marketplace/actions/shellcheck)
     # This is a community-created action
     - name: Run ShellCheck
-      uses: ludeeus/action-shellcheck@master
+    - uses: ludeeus/action-shellcheck@master
