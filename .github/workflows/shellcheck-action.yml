@@ -1,3 +1,6 @@
+# GitHub Actions (https://docs.github.com/en/actions/learn-github-actions) workflow 
+# GitHub Actions enables automated builds, tests, and more through GitHub hosted infrastructure.
+
 # Name of the workflow
 name: shellcheck
 
