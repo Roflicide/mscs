@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out the MSCS repository under $GITHUB_WORKSPACE, so jobs can access the code
-      # This is a GitHub-created action
       - name: Checkout MSCS code
       - uses: actions/checkout@v2
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
 
