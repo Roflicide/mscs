@@ -25,7 +25,4 @@ jobs:
       # This is a GitHub-created action
       - name: Checkout MSCS code
       - uses: actions/checkout@v2
-      # Runs the ShellCheck action (https://github.com/marketplace/actions/shellcheck)
-      # This is a community-created action
-      - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+
