@@ -31,5 +31,7 @@ jobs:
       # This is a community-created action
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@master
+        with:
+          ignore: iptables.rules runtests.sh mscs.service mscs.completion
 
 
